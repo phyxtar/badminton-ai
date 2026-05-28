@@ -1,5 +1,4 @@
 import streamlit as st
-import pandas as pd
 from analysis import analyze_video
 from utils import save_uploaded_file
 
@@ -69,7 +68,7 @@ header, footer {
     transition: 0.3s;
 }
 
-/* HOVER EFFECT */
+/* HOVER */
 [data-testid="metric-container"]:hover {
     transform: translateY(-3px);
     border: 1px solid #3b82f6;
@@ -95,7 +94,7 @@ header, footer {
     border: 1px solid rgba(255,255,255,0.08);
 }
 
-/* SECTION HEADINGS */
+/* SECTION */
 .section-title {
     font-size: 22px;
     font-weight: 600;
@@ -104,27 +103,15 @@ header, footer {
     color: white;
 }
 
-/* ALERTS */
+/* ALERT */
 .stAlert {
     border-radius: 14px;
     font-size: 14px;
 }
 
-/* CHART */
-canvas {
-    border-radius: 15px;
-}
-
 /* FILE UPLOADER */
 [data-testid="stFileUploader"] {
     background: transparent;
-}
-
-/* DIVIDER */
-hr {
-    margin-top: 18px;
-    margin-bottom: 18px;
-    border-color: rgba(255,255,255,0.08);
 }
 
 </style>
@@ -137,11 +124,11 @@ st.markdown(
 )
 
 st.markdown(
-    "<div class='sub-title'>AI Powered Player Performance & Movement Analysis System</div>",
+    "<div class='sub-title'>AI Powered Player Performance Analysis System</div>",
     unsafe_allow_html=True
 )
 
-# UPLOAD SECTION
+# UPLOAD BOX
 st.markdown("<div class='upload-box'>", unsafe_allow_html=True)
 
 uploaded_file = st.file_uploader(
@@ -151,14 +138,14 @@ uploaded_file = st.file_uploader(
 
 st.markdown("</div>", unsafe_allow_html=True)
 
-# VIDEO ANALYSIS
+# ANALYSIS
 if uploaded_file:
 
     video_path = save_uploaded_file(uploaded_file)
 
     st.video(video_path)
 
-    with st.spinner("Analyzing AI Performance..."):
+    with st.spinner("Analyzing Player Performance..."):
         result = analyze_video(video_path)
 
     st.divider()
@@ -218,27 +205,20 @@ if uploaded_file:
 
     st.divider()
 
-    # CHART + INFO
+    # ATTACK / DEFENSE
     left, right = st.columns([2,1])
 
     with left:
 
         st.markdown(
-            "<div class='section-title'>📈 Attack vs Defense</div>",
+            "<div class='section-title'>📈 Attack Analysis</div>",
             unsafe_allow_html=True
         )
 
-        chart_data = pd.DataFrame({
-            "Category": ["Attack", "Defense"],
-            "Score": [
-                result['attack_score'],
-                result['defense_score']
-            ]
-        })
+        st.progress(result['attack_score'])
 
-        st.bar_chart(
-            chart_data.set_index("Category")
-        )
+        st.write("Attack Score:", result['attack_score'])
+        st.write("Defense Score:", result['defense_score'])
 
     with right:
 
@@ -269,11 +249,10 @@ if uploaded_file:
 
     st.divider()
 
-    # FOOTER
     st.markdown(
         """
         <center style='color:gray;font-size:13px'>
-        Powered by AI Pose Detection • Computer Vision • Sports Analytics
+        Powered by AI Sports Analytics
         </center>
         """,
         unsafe_allow_html=True
