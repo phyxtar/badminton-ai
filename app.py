@@ -26,7 +26,7 @@ st.markdown("""
     max-width: 1200px;
 }
 
-/* REMOVE DEFAULT */
+/* REMOVE HEADER */
 header, footer {
     visibility: hidden;
 }
@@ -58,7 +58,7 @@ header, footer {
     margin-bottom: 25px;
 }
 
-/* METRIC CARD */
+/* METRIC CARDS */
 [data-testid="metric-container"] {
     background: rgba(255,255,255,0.05);
     border: 1px solid rgba(255,255,255,0.08);
@@ -68,7 +68,7 @@ header, footer {
     transition: 0.3s;
 }
 
-/* HOVER */
+/* HOVER EFFECT */
 [data-testid="metric-container"]:hover {
     transform: translateY(-3px);
     border: 1px solid #3b82f6;
@@ -94,7 +94,7 @@ header, footer {
     border: 1px solid rgba(255,255,255,0.08);
 }
 
-/* SECTION */
+/* SECTION TITLE */
 .section-title {
     font-size: 22px;
     font-weight: 600;
@@ -124,11 +124,11 @@ st.markdown(
 )
 
 st.markdown(
-    "<div class='sub-title'>AI Powered Player Performance Analysis System</div>",
+    "<div class='sub-title'>AI Powered Player Performance & Motion Analysis System</div>",
     unsafe_allow_html=True
 )
 
-# UPLOAD BOX
+# UPLOAD SECTION
 st.markdown("<div class='upload-box'>", unsafe_allow_html=True)
 
 uploaded_file = st.file_uploader(
@@ -150,7 +150,7 @@ if uploaded_file:
 
     st.divider()
 
-    # DASHBOARD
+    # PERFORMANCE DASHBOARD
     st.markdown(
         "<div class='section-title'>📊 Performance Dashboard</div>",
         unsafe_allow_html=True
@@ -184,13 +184,13 @@ if uploaded_file:
     col5, col6, col7, col8 = st.columns(4)
 
     col5.metric(
-        "Jump Count",
-        result['jump_count']
+        "Activity %",
+        f"{result['activity_percent']}%"
     )
 
     col6.metric(
-        "Smash Activity",
-        result['smash_count']
+        "Left Motion",
+        result['left_motion']
     )
 
     col7.metric(
@@ -211,14 +211,21 @@ if uploaded_file:
     with left:
 
         st.markdown(
-            "<div class='section-title'>📈 Attack Analysis</div>",
+            "<div class='section-title'>📈 Motion Analysis</div>",
             unsafe_allow_html=True
         )
 
         st.progress(result['attack_score'])
 
-        st.write("Attack Score:", result['attack_score'])
-        st.write("Defense Score:", result['defense_score'])
+        st.write("Attack Activity:", result['attack_score'])
+
+        st.write("Defense Activity:", result['defense_score'])
+
+        st.write("Right Motion:", result['right_motion'])
+
+        st.write("Active Frames:", result['active_frames'])
+
+        st.write("Total Frames:", result['total_frames'])
 
     with right:
 
@@ -249,10 +256,11 @@ if uploaded_file:
 
     st.divider()
 
+    # FOOTER
     st.markdown(
         """
         <center style='color:gray;font-size:13px'>
-        Powered by AI Sports Analytics
+        Powered by AI Motion Tracking • Computer Vision • Sports Analytics
         </center>
         """,
         unsafe_allow_html=True
