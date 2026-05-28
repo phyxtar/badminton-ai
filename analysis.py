@@ -1,91 +1,201 @@
 import cv2
-import random
+import numpy as np
 
 def analyze_video(video_path):
 
     cap = cv2.VideoCapture(video_path)
 
-    frame_count = 0
+    total_frames = 0
+    active_frames = 0
 
-    while cap.isOpened():
+    left_motion = 0
+    right_motion = 0
 
-        success, frame = cap.read()
+    total_motion = 0
 
-        if not success:
+    prev_gray = None
+
+    frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+
+    while True:
+
+        ret, frame = cap.read()
+
+        if not ret:
             break
 
-        frame_count += 1
+        total_frames += 1
+
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+        gray = cv2.GaussianBlur(gray, (21, 21), 0)
+
+        if prev_gray is None:
+            prev_gray = gray
+            continue
+
+        # Frame Difference
+        frame_diff = cv2.absdiff(prev_gray, gray)
+
+        thresh = cv2.threshold(
+            frame_diff,
+            25,
+            255,
+            cv2.THRESH_BINARY
+        )[1]
+
+        motion_pixels = np.sum(thresh > 0)
+
+        total_motion += motion_pixels
+
+        # Active Frame Detection
+        if motion_pixels > 5000:
+            active_frames += 1
+
+        # Left / Right Motion
+        left_side = thresh[:, :frame_width // 2]
+        right_side = thresh[:, frame_width // 2:]
+
+        left_motion += np.sum(left_side > 0)
+        right_motion += np.sum(right_side > 0)
+
+        prev_gray = gray
 
     cap.release()
 
-    movement_score = random.randint(55, 95)
-    jump_count = random.randint(3, 15)
-    smash_count = random.randint(5, 20)
+    # SAFETY
+    if total_frames == 0:
+        total_frames = 1
 
-    left_moves = random.randint(20, 50)
-    right_moves = random.randint(20, 50)
+    # REAL DYNAMIC CALCULATIONS
 
-    weak_side = "Left Side" if left_moves < right_moves else "Right Side"
+    activity_percent = int(
+        (active_frames / total_frames) * 100
+    )
 
-    court_coverage = random.randint(50, 95)
+    movement_score = min(
+        int(total_motion / 100000),
+        100
+    )
 
-    attack_score = random.randint(40, 90)
+    court_coverage = min(
+        int((left_motion + right_motion) / 500000),
+        100
+    )
+
+    attack_score = min(
+        int(right_motion / 300000),
+        100
+    )
+
     defense_score = 100 - attack_score
 
-    dominant_zone = random.choice([
-        "Front Court",
-        "Mid Court",
-        "Back Court"
-    ])
+    weak_side = (
+        "Left Side"
+        if left_motion < right_motion
+        else "Right Side"
+    )
 
-    footwork = random.choice([
-        "Fast",
-        "Average",
-        "Slow"
-    ])
+    # FITNESS
+    if movement_score > 75:
+        fitness = "Excellent"
+    elif movement_score > 45:
+        fitness = "Average"
+    else:
+        fitness = "Needs Improvement"
 
-    stamina = random.choice([
-        "High",
-        "Moderate",
-        "Low"
-    ])
+    # STAMINA
+    if activity_percent > 70:
+        stamina = "High"
+    elif activity_percent > 40:
+        stamina = "Moderate"
+    else:
+        stamina = "Low"
 
-    fitness = random.choice([
-        "Excellent",
-        "Average",
-        "Needs Improvement"
-    ])
+    # FOOTWORK
+    if movement_score > 70:
+        footwork = "Fast"
+    elif movement_score > 40:
+        footwork = "Average"
+    else:
+        footwork = "Slow"
 
-    grade = random.choice([
-        "A+",
-        "A",
-        "B",
-        "C"
-    ])
+    # GRADE
+    if movement_score > 80:
+        grade = "A+"
+    elif movement_score > 60:
+        grade = "A"
+    elif movement_score > 40:
+        grade = "B"
+    else:
+        grade = "C"
 
-    suggestions = [
-        "Improve backhand reaction speed.",
-        "Player movement is good during rallies.",
-        "Court recovery needs improvement.",
-        "Smash timing is impressive.",
-        "Improve defensive footwork.",
-    ]
+    # DOMINANT ZONE
+    dominant_zone = (
+        "Right Court"
+        if right_motion > left_motion
+        else "Left Court"
+    )
+
+    # AI FEEDBACK
+    suggestions = []
+
+    if movement_score < 40:
+        suggestions.append(
+            "Player movement intensity is low."
+        )
+
+    if activity_percent < 50:
+        suggestions.append(
+            "Player activity level decreases during rallies."
+        )
+
+    if weak_side == "Left Side":
+        suggestions.append(
+            "Left side court recovery is weaker."
+        )
+
+    if weak_side == "Right Side":
+        suggestions.append(
+            "Right side movement speed needs improvement."
+        )
+
+    if movement_score > 75:
+        suggestions.append(
+            "Excellent court movement and recovery speed."
+        )
 
     return {
-        "frames": frame_count,
+
         "movement_score": movement_score,
-        "left_moves": left_moves,
-        "right_moves": right_moves,
-        "jump_count": jump_count,
-        "smash_count": smash_count,
-        "fitness": fitness,
-        "weak_side": weak_side,
-        "suggestions": suggestions,
-        "footwork": footwork,
-        "stamina": stamina,
-        "grade": grade,
+
+        "activity_percent": activity_percent,
+
         "court_coverage": court_coverage,
+
         "attack_score": attack_score,
+
         "defense_score": defense_score,
-        "dominant_zone": dominant_zone
+
+        "fitness": fitness,
+
+        "stamina": stamina,
+
+        "footwork": footwork,
+
+        "grade": grade,
+
+        "weak_side": weak_side,
+
+        "dominant_zone": dominant_zone,
+
+        "left_motion": int(left_motion / 1000),
+
+        "right_motion": int(right_motion / 1000),
+
+        "active_frames": active_frames,
+
+        "total_frames": total_frames,
+
+        "suggestions": suggestions
     }
