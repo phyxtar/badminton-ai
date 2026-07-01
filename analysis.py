@@ -326,35 +326,68 @@ def validate_badminton_video(video_path):
     if not frame_scores:
         return False, "Could not read video frames"
 
-    # Average score across sampled frames
-    avg_score = np.mean([s['total'] for s in frame_scores])
+    # Calculate averages for each signal
+    avg = {k: np.mean([s[k] for s in frame_scores])
+           for k in ['total', 'court_color', 'net', 'lines', 'ratio', 'indoor']}
 
-    # Check for strong grass detection (automatic reject)
-    avg_court_color = np.mean([s['court_color'] for s in frame_scores])
-    if avg_court_color == 0.0:
-        # Every frame detected grass — almost certainly football/cricket
-        avg_net = np.mean([s['net'] for s in frame_scores])
-        if avg_net < 0.4:
-            return False, ("This appears to be an outdoor field sport video (football, cricket, etc.), "
-                           "not badminton. Please upload a video showing a badminton court.")
+    # ═══════════════════════════════════════════════════════════
+    # STRICT VALIDATION: Multiple mandatory checks
+    # ═══════════════════════════════════════════════════════════
 
-    # Threshold for acceptance
-    if avg_score >= 0.35:
+    # MANDATORY CHECK 1: Court surface color must be detected
+    # Badminton courts ALWAYS have a visible colored synthetic surface
+    if avg['court_color'] < 0.2:
+        return False, (
+            "No badminton court surface detected. The video must show "
+            "a clearly visible badminton court (green, blue, or red surface). "
+            "Please upload a proper badminton court video."
+        )
+
+    # MANDATORY CHECK 2: Court lines must be present
+    # Badminton courts ALWAYS have white boundary and service lines
+    if avg['lines'] < 0.2:
+        return False, (
+            "No court line markings detected. Badminton courts have "
+            "white boundary lines and service lines. "
+            "Please upload a video showing a badminton court with visible lines."
+        )
+
+    # MANDATORY CHECK 3: Must have at least one of: net OR court rectangle
+    # This eliminates random indoor scenes with colored floors
+    if avg['net'] < 0.2 and avg['ratio'] < 0.2:
+        return False, (
+            "No badminton net or court shape detected. "
+            "Please upload a video showing a full badminton court with the net visible."
+        )
+
+    # AUTO-REJECT: Grass/outdoor field detected
+    if avg['court_color'] == 0.0:
+        return False, (
+            "This appears to be an outdoor field sport video (football, cricket, etc.), "
+            "not badminton. Please upload a video showing an indoor badminton court."
+        )
+
+    # OVERALL SCORE CHECK: Raised threshold to 0.45
+    avg_score = avg['total']
+    if avg_score >= 0.45:
         return True, "Valid badminton video"
-    elif avg_score >= 0.25:
-        # Borderline — check if at least 2 strong signals are present
-        avg_signals = {k: np.mean([s[k] for s in frame_scores])
-                       for k in ['court_color', 'net', 'lines', 'ratio', 'indoor']}
-        strong_signals = sum(1 for v in avg_signals.values() if v >= 0.5)
-        if strong_signals >= 2:
+    elif avg_score >= 0.35:
+        # Borderline — require at least 3 strong signals (not just 2)
+        strong_signals = sum(1 for k in ['court_color', 'net', 'lines', 'ratio', 'indoor']
+                            if avg[k] >= 0.5)
+        if strong_signals >= 3:
             return True, "Valid badminton video"
         else:
-            return False, ("This doesn't appear to be a badminton video. The video lacks "
-                           "key badminton indicators (court markings, net, indoor setting). "
-                           "Please upload a clear badminton court video.")
+            return False, (
+                "This doesn't appear to be a badminton video. The video lacks "
+                "enough badminton indicators (court surface, net, line markings). "
+                "Please upload a clear badminton court video."
+            )
     else:
-        return False, ("This doesn't appear to be a badminton video. Please upload a video "
-                       "showing a badminton court with visible court lines, net, and players.")
+        return False, (
+            "This doesn't appear to be a badminton video. Please upload a video "
+            "showing a badminton court with visible court lines, net, and players."
+        )
 
 
 def detect_player_count(video_path):
