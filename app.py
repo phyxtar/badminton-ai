@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import time
+import os
 from analysis import analyze_video, validate_badminton_video, detect_player_count
 from utils import save_uploaded_file
 
@@ -272,10 +273,10 @@ def analyzer_page():
                 st.markdown("<div class='sec'>Quick Stats</div>", unsafe_allow_html=True)
                 q1, q2 = st.columns(2)
                 q1.metric("Grade", res['grade'])
-                q2.metric("Fitness", res['fitness'])
+                q2.metric("Shots", str(res['total_shots']))
                 q3, q4 = st.columns(2)
-                q3.metric("Movement", f"{res['movement_score']}%")
-                q4.metric("Activity", f"{res['activity_percent']}%")
+                q3.metric("Distance", f"{res['distance_covered']}m")
+                q4.metric("Avg Speed", f"{res['avg_speed']} m/s")
 
             st.divider()
             st.markdown("<div class='sec'>📊 Performance Dashboard</div>", unsafe_allow_html=True)
@@ -292,41 +293,97 @@ def analyzer_page():
             c5, c6, c7, c8 = st.columns(4)
             c5.metric("Activity", f"{res['activity_percent']}%")
             c6.metric("Zone", res['dominant_zone'])
-            c7.metric("Attack", res['attack_score'])
-            c8.metric("Defense", res['defense_score'])
+            c7.metric("Attack", str(res['attack_score']))
+            c8.metric("Defense", str(res['defense_score']))
 
             st.divider()
+
+            # ── Heatmap & Trajectory ──
+            st.markdown("<div class='sec'>🔥 Court Analysis</div>", unsafe_allow_html=True)
+            hm_col, tr_col = st.columns(2)
+            with hm_col:
+                st.caption("Player Position Heatmap")
+                if res.get('heatmap_path') and os.path.exists(res['heatmap_path']):
+                    st.image(res['heatmap_path'])
+                else:
+                    st.info("Heatmap data insufficient")
+            with tr_col:
+                st.caption("Movement Trajectory")
+                if res.get('trajectory_path') and os.path.exists(res['trajectory_path']):
+                    st.image(res['trajectory_path'])
+                else:
+                    st.info("Trajectory data insufficient")
+
+            st.divider()
+
+            # ── Shot Analysis ──
+            st.markdown("<div class='sec'>🎯 Shot Analysis</div>", unsafe_allow_html=True)
+            sh1, sh2, sh3, sh4 = st.columns(4)
+            sh1.metric("Total Shots", str(res['total_shots']))
+            sh2.metric("Front Court", str(res.get('shot_zones', {}).get('Front Court', 0)))
+            sh3.metric("Mid Court", str(res.get('shot_zones', {}).get('Mid Court', 0)))
+            sh4.metric("Rear Court", str(res.get('shot_zones', {}).get('Rear Court', 0)))
+            if res.get('shot_chart_path') and os.path.exists(res['shot_chart_path']):
+                st.image(res['shot_chart_path'])
+
+            st.divider()
+
+            # ── Movement Timeline ──
+            st.markdown("<div class='sec'>📈 Movement Timeline</div>", unsafe_allow_html=True)
+            if res.get('timeline_path') and os.path.exists(res['timeline_path']):
+                st.image(res['timeline_path'])
+            else:
+                st.caption("Timeline chart not available")
+
+            st.divider()
+
+            # ── Motion Breakdown ──
+            st.markdown("<div class='sec'>📐 Motion Breakdown</div>", unsafe_allow_html=True)
             ml, mr = st.columns([3, 1])
             with ml:
-                st.markdown("<div class='sec'>📈 Motion Breakdown</div>", unsafe_allow_html=True)
-                st.progress(min(res['attack_score'], 100))
+                st.progress(min(res['movement_score'], 100))
                 x1, x2, x3 = st.columns(3)
-                x1.caption(f"Left: **{res['left_motion']}k**")
-                x2.caption(f"Right: **{res['right_motion']}k**")
-                x3.caption(f"Active: **{res['active_frames']}f**")
-                x1.caption(f"Total: **{res['total_frames']}f**")
+                x1.caption(f"Distance: **{res['distance_covered']}m**")
+                x2.caption(f"Dir Changes: **{res['direction_changes']}**")
+                x3.caption(f"Max Speed: **{res['max_speed']} m/s**")
+                x1.caption(f"Duration: **{res.get('duration', 0)}s**")
                 x2.caption(f"Type: **{player_type}**")
                 x3.caption(f"Players: **{player_count}**")
             with mr:
                 st.markdown("<div class='sec'>⚠️ Weak Side</div>", unsafe_allow_html=True)
-                st.error(res['weak_side'])
+                if res['weak_side'] == "Balanced":
+                    st.success("Balanced ✅")
+                else:
+                    st.error(res['weak_side'])
+
+            st.divider()
+
+            # ── Court Position Balance ──
+            st.markdown("<div class='sec'>📐 Court Position Balance</div>", unsafe_allow_html=True)
+            bl1, bl2 = st.columns(2)
+            with bl1:
+                st.caption(f"⬅️ Left {res['left_pct']}%  |  Right {res['right_pct']}% ➡️")
+                st.progress(min(res['left_pct'], 100))
+            with bl2:
+                st.caption(f"⬆️ Front {res['front_pct']}%  |  Rear {res['rear_pct']}% ⬇️")
+                st.progress(min(res['front_pct'], 100))
 
             if er:
                 st.divider()
                 st.markdown(f"<div class='sec'>🆚 vs {st.session_state.expert_name}</div>", unsafe_allow_html=True)
                 df = pd.DataFrame({
-                    "Metric": ["Movement","Activity","Coverage","Attack","Defense","Footwork","Grade"],
+                    "Metric": ["Movement", "Activity", "Coverage", "Attack", "Defense", "Footwork", "Grade"],
                     "You": [f"{res['movement_score']}%", f"{res['activity_percent']}%", f"{res['court_coverage']}%",
-                            res['attack_score'], res['defense_score'], res['footwork'], res['grade']],
+                            str(res['attack_score']), str(res['defense_score']), res['footwork'], res['grade']],
                     st.session_state.expert_name: [f"{er['movement_score']}%", f"{er['activity_percent']}%",
-                            f"{er['court_coverage']}%", er['attack_score'], er['defense_score'], er['footwork'], er['grade']],
+                            f"{er['court_coverage']}%", str(er['attack_score']), str(er['defense_score']), er['footwork'], er['grade']],
                     "Gap": [f"{res['movement_score']-er['movement_score']:+d}%",
                             f"{res['activity_percent']-er['activity_percent']:+d}%",
                             f"{res['court_coverage']-er['court_coverage']:+d}%",
                             f"{res['attack_score']-er['attack_score']:+d}",
                             f"{res['defense_score']-er['defense_score']:+d}", "—", "—"]
                 })
-                st.dataframe(df, use_container_width=True, hide_index=True)
+                st.dataframe(df, width='stretch', hide_index=True)
 
             st.divider()
             st.markdown("<div class='sec'>🤖 AI Coach Feedback</div>", unsafe_allow_html=True)
@@ -338,7 +395,7 @@ def analyzer_page():
                 if res['court_coverage'] < er['court_coverage']:
                     st.warning(f"📐 Court coverage lower. Practice all 4 corners.")
             for s in res['suggestions']:
-                st.warning(s)
+                st.info(s)
 
             st.markdown("<br><center style='color:#1f2937;font-size:10px'>Powered by AI Motion Tracking · Computer Vision · Sports Analytics</center>", unsafe_allow_html=True)
 
